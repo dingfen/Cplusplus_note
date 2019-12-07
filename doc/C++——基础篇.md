@@ -102,6 +102,31 @@ class {
 
 这是用宏来确保类不会被二次`include`，从而报出重定义的错误。不过也有`#pragma once`这种写法。
 
+还有很多有趣的用法，比如：
+
+```C++
+// 字符串连接 将数字变为字符串
+#define Con(x, y)  x##y
+#define ToString(x) #x
+
+// 用宏来求两个数的最大值  （仍建议使用内联函数）
+ /* 通过比较x,y的指针类型，得到警告 若类型一致 通过void消除 */ 
+#define max(x, y) ({    \
+    typeof(x) _max1 = (x);  \
+    typeof(y) _max2= (y);   \
+    (void) (&_max1 == &_max2);  \
+    _max1 > _max2 ? _max1: _max2;   \
+    })
+
+// 使用宏可以快速定义一批变量
+#define LIST_OF_VARIABLIES \
+        X(value1)  \
+        X(value2)  \
+        X(value3)
+```
+
+具体事例可以参见[如此代码](../src/basic/macro)
+
 ### 四、不可拷贝类
 
 在C++中定义一个类时，如果不明确定义拷贝构造函数和拷贝赋值操作符，编译器会自动生成这两个函数，虽然很方便，但是有时我们不需要某些类有这样的功能。
