@@ -181,7 +181,62 @@ protected:
 
 ### 堆、栈、静态数据区
 
+在阅读很多材料时，经常会提到某些变量是存放在堆/栈/全局区域里的，那么，到底这些都是什么呢？
 
+事实上，一个程序在运行时会把内存空间分为这么几块区域
+
+- 代码段(code segment)：被编译器生成的二进制代码段存放于此，通常是可读的
+- 未初始化数据段(bss segment)：未被初始化的全局变量和静态变量存放在这里
+- 初始化数据段(data segment)：初始化了的全局变量和静态变量存放在此
+- 堆(heap)：动态申请内存的变量会被放在这里
+- 调用栈(call stack)：局部变量、函数参数或者其他与函数相关的信息存放于此
+
+---
+
+可以看到，堆是一段被动态申请释放的内存空间。在C/C++中，使用`new`分配的空间，全部位于heap中，例如：
+
+```C++
+int *ptr = new int; // ptr is assigned 4 bytes in the heap
+int *array = new int[10]; // array is assigned 40 bytes in the heap
+```
+
+内存的地址会被`operator new`传送过来存放到指针中。因此`delete`只是将已分配的内存还给堆，并没有将指针变量删去。
+
+堆内的分配和释放没有限制，可以随时分配块并随时释放它，但**堆内的空间必须被显性地释放**，这就是为什么如果没有`delete`会导致内存泄漏。而且**堆内分配的空间是不连续的**，因此**跟踪堆的哪些部分被分配或空闲变得更加复杂**，分配内存也相对较慢，好处是**堆的空间非常大**，因此许多大规模的数组或者结构体都不得不存放在这里。有许多用户自定义的堆分配器可用于针对不同的使用模式调整堆性能。
+
+---
+
+栈一般指的都是调用栈(call stack)，在程序运行时，栈中存放着所有正在被执行的函数，以及它们的局部变量。
+
+```C++
+int main()
+{
+    char name[25]; // name is assigned 25 bytes in the stack
+    int len;
+}
+```
+
+栈是作为程序执行的暂存空间。调用函数时，在堆栈顶部保留一个块，用于本地变量和其他数据。当该函数返回时，该块就会被清空，并且在下次调用函数时使用。栈始终按照LIFO的原则弹出或压入块。最近放入的块始终是最先会被释放的块。因此栈的实现非常简单，而且分配的空间也是连续的，从堆栈中释放块只不过是调整一个指针。
+
+栈的内存空间是比较小的，Visual Studio默认栈的大小为1MB，当变量使用的内存超过这一限制时，操作系统会报出stack overflow的错误然后将程序关闭。
+
+下面我们来看这样的一个简单的程序，探讨一下这些变量会在哪里存放地址
+
+```C++
+const int A = 10;       // global in data segment
+int a = 20;             // global in data segment
+static int b = 30;      // global in data segment
+int c;                  // global in bss segment
+
+int main(int argc, char const *argv[])
+{
+    static int d = 40;      // local in data segment 
+    char e[] = "hello";     // local in the stack "hello" is in .rodata
+    register int f = 50;    // `register` tells the compiler that the var will be heavily 							  // used and recommend to be kept in register if possible.
+    void *p1 = (char *)malloc(10);  // local for p1 pointer, but 10 bytes in the heap
+    return 0;
+}
+```
 
 ## 疑问解答
 
@@ -191,6 +246,11 @@ extern是C/C++语言中表明函数和全局**变量作用范围**的关键字�
 
  通常，在模块的头文件中对**本模块提供给其它模块引用的函数和全局变量以关键字extern声明**。例如，如果模块B欲引用该模块A中定义的全局变量和函数时只需包含模块A的头文件即可。这样，模块B中调用模块A中的函数时，在编译阶段，模块B虽然找不到该函数，但是并不会报错；它会在**链接阶段**中从模块A编译生成的目标代码中找到此函数。
 
-## 2. constexpr关键字什么用处
+### 2. static关键字什么用处？
+
+### 3. constexpr关键字什么用处
 
 `constexpr`表示，被声明的函数或变量的值可以在编译期间被计算出来。那么这些变量或者函数的值就可以被当做编译期间的常量去使用
+
+### 4. final关键字是什么含义？
+
