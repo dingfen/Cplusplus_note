@@ -177,6 +177,8 @@ protected:
 };
 ```
 
+### 二、protected相关
+
 ## 编译与操作系统相关
 
 ### 堆、栈、静态数据区
@@ -248,9 +250,31 @@ extern是C/C++语言中表明函数和全局**变量作用范围**的关键字�
 
 ### 2. static关键字什么用处？
 
+`static`关键字有很多用法，不同用法含义也不同。
+
+- 函数中的`static`变量
+
+  > When a variable is declared as static, space for **it gets allocated for the lifetime of the program**. Even if the function is called multiple times, space for the static variable is allocated only once and the value of variable in the previous call gets carried through the next function call.
+
+- 类中的`static`变量
+
+  > As the variables declared as static are initialized only once as they are allocated space in separate static storage so, the static variables **in a class are shared by the objects.** There can not be multiple copies of same static variables for different objects. Also because of this reason static variables can not be initialized using constructors.
+  >
+  > a static variable inside a class should be initialized explicitly by the user using the class name and scope resolution operator outside the class
+
+- 类中的`static`函数
+
+  > Just like the static data members or static variables inside the class, static member functions also does not depend on object of class. We are allowed to invoke a static member function using the object and the `.` operator but it is recommended to invoke the static members using the class name and the scope resolution operator.
+  > **Static member functions are allowed to access only the static data members or other static member functions**, they can not access the non-static data members or member functions of the class.
+
 ### 3. constexpr关键字什么用处
 
 `constexpr`表示，被声明的函数或变量的值可以在编译期间被计算出来。那么这些变量或者函数的值就可以被当做编译期间的常量去使用
 
 ### 4. final关键字是什么含义？
 
+> Specifies that a [virtual function](https://en.cppreference.com/w/cpp/language/virtual) cannot be overridden in a derived class or that a class cannot be [inherited from](https://en.cppreference.com/w/cpp/language/derived_class).（译：指示 在继承类中虚函数不能再被重载或者该类不能再被派生）
+
+当被用于成员函数时，`final`紧跟着成员函数的声明或定义部分出现;当被用于一个类时，`final`出现在类定义开始之处，紧跟着类名。
+
+个人理解为，`final`是为了防止一个虚函数被其他程序员再重载，从而其实现被覆盖;也防止一个类被派生。
