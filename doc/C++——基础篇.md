@@ -239,7 +239,100 @@ C++的不同之处在于，它既支持指针，又支持引用。表面上看�
 - 地址，指针变量自身有自己的地址，而引用变量与被引用者共享相同的地址（但也确实占了空间）。
 - 指针可以指向指针，而引用不可以引用引用。`int &p = a; int &&q = p;`是错误的
 
-### 四、左引用与右引用
+那么，什么时候该用指针，什么时候该用引用？
+
+- 使用引用
+  - 在传递函数的参数和返回值时
+  - 需要避免拷贝带来的性能损失
+- 使用指针
+  - 需要用到指针偏移计算或者有时候传递`NULL`指针是必要的
+  - 实现数据结构，比如树、链表等需要用指针
+
+### 四、左值与右值
+
+首先，我们直观地理解一下左值(lvalue)与右值(rvalue)。左值一般出现在`=`左边，右值一般出现在`=`右边。在C++中，也有严格的定义。
+
+> In C++ an *lvalue* is **something that points to a specific memory location**. On the other hand, a *rvalue* is **something that doesn't point anywhere**. It's also fun to think of lvalues as *containers* and rvalues as *things contained in the containers*. Without a container, they would expire.
+
+```C++
+int x = 666;  // ok
+int y;
+666 = y;  // error
+```
+
+在这里`666`当然是个右值，因为它没有特定的内存，而`x`是个左值，在程序运行时一定有自己的内存地址。下一句话就明显错误了，因为666仅仅是一个数字，没有内存地址，不可能将y存入的。
+
+```C++
+int *y = &x;
+int *y = &666;
+```
+
+这里先是取了`x`的地址，将它放到`y`中。通过取地址符号`&`，可以将左值`x`传入然后变为一个右值`&x`。而`&666`是错误的，因为`666`没有地址，`&`的输入必须时左值，才可能正确运行。
+
+---
+
+在充分理解了左值和右值后，再来看一下下面的例子：
+
+```C++
+int setValue()
+{
+    return 6;
+}
+
+setValue() = 3; // error!
+
+///////////////////////
+
+int global = 100;
+
+int& setGlobal()
+{
+    return global;    
+}
+
+// ... somewhere in main() ...
+
+setGlobal() = 400; // OK it is useful when doing advanced stuff like implementing some overloaded operators.
+```
+
+为什么第一个程序是不正确的？因为第一个程序仅仅返回的时一个立即数`6`，是一个右值，因此不能在`=`的左边。而第二个程序，返回了一个`global`的引用，前面也提到过，引用本质就是别名，他指向了一个存在的内存位置`global`，因此是左值，那么这样操作就是正确的。
+
+---
+
+那么，左值与右值可以相互转换么？
+
+首先，左值是可以转到右值的。比如`int z = x + y`就存在左值转到右值。根据C++的定义，`+`需要两个右值参数，相加后返回一个右值。但`x`和`y`显然都是左值，这里就需要一个隐藏的`lvalue-to-rvalue`转换。
+
+右值不可以转到左值，这不是技术上的困难，C++设计者为了避免烦恼而这样规定的。
+
+```C++
+int y = 10;
+int &yref = y; // ok you can do it
+
+void fnc(const int &x) {...}
+fnc(10); // ok
+////////////////
+int &yref = 10; // error
+
+void fnc(int &x) {...}
+fnc(10);	// also error
+int x = 10;
+fnc(x);		// that's ok
+```
+
+因为`10`没有特定的内存地址，而现在左值要取它的引用，指向一个存在的东西，这是矛盾的。从第二个例子来看，如果为了避免拷贝开销，使用引用`int &`，那么传入一个立即数是非法的，一定需要再声明一个变量才行。这就感觉非常不变且容易出错。解决办法就是使用`const int &`。
+
+那么为什么`const int &x = 10`这样的语法就是可行的呢？直观来看，`10`这个立即数被认为是随时会变动并立马消亡的，因此对它做引用没有任何意义，但如果这个引用自身是常量，意味着指向的东西不能被更改，那么右值的这个易被更改的问题就得到了解决（有`const`限制）。这不是技术上的难题，而是为了避免麻烦才规定的。
+
+在内部编译器实现中，事实上会发生这样的转换：
+
+```C++
+const int& ref = 10;
+
+// ... would translate to:
+int __internal_unique_name = 10;
+const int& ref = __internal_unique_name;
+```
 
 ### 五、std::forward与std::move
 
