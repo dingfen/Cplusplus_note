@@ -179,6 +179,72 @@ protected:
 
 ### 二、protected相关
 
+类成员被`protected`关键字限制时，只能
+
+- 该类内部的成员或者友员访问。
+- 派生类的成员函数和友元函数可以使用继承下来的`protected`成员，但不能显示地直接使用该类来访问`protected`成员。
+
+文字描述不太容易，示例程序更加清楚：
+
+```C++
+struct Base {
+ protected:
+    int i;
+ private:
+    void g(Base& b, struct Derived& d);
+};
+ 
+struct Derived : Base {
+    void f(Base& b, Derived& d) // member function of a derived class
+    {
+        ++d.i; // okay: the type of d is Derived
+        ++i; // okay: the type of the implied '*this' is Derived
+//      ++b.i; // error: can't access a protected member through Base
+//                 (Otherwise it would be possible to change other derived classes, 
+//                  like a hypothetical Derived2, base implementation)
+    }
+    
+    void f()
+    {   // a pointer to a protected member must be used by derived class
+//      int Base::* ptr = &Base::i;    // error: must name using Derived
+        int Base::* ptr = &Derived::i; // okay
+    }
+};
+ 
+void Base::g(Base& b, Derived& d) // member function of Base
+{
+    ++i; // okay
+    ++b.i; // okay
+    ++d.i; // okay
+}
+ 
+void x(Base& b, Derived& d) // non-member non-friend
+{
+//    ++b.i; // error: no access from non-member
+//    ++d.i; // error: no access from non-member
+}
+```
+
+### 三、引用与指针
+
+C++的不同之处在于，它既支持指针，又支持引用。表面上看，指针和引用十分相似，但又有一点不同。
+
+> [Pointers](https://www.geeksforgeeks.org/pointers-in-c-and-c-set-1-introduction-arithmetic-and-array/): A pointer is a variable that holds memory address of another variable. 
+>
+> [References](https://www.geeksforgeeks.org/references-in-c/) : A reference variable is an alias, that is, another name for an already existing variable. A reference, like a pointer, is also implemented by storing the address of an object. A reference can be thought of as a constant pointer (not to be confused with a pointer to a constant value!) with automatic indirection
+
+从本质上讲，**指针**只不过是存了另一个变量的地址，而**引用**就是另一个变量的别名，但是在具体实现时，仍然只是存储了另一个变量的地址而已。
+
+- 初始化时，指针可以不被初始化，但是引用必须在声明的同时初始化。因为它的本质就是给变量取名，初始化时没有变量是无法取名的，因此引用也不能被赋值为`NULL`
+- 地址，指针变量自身有自己的地址，而引用变量与被引用者共享相同的地址（但也确实占了空间）。
+- 指针可以指向指针，而引用不可以引用引用。`int &p = a; int &&q = p;`是错误的
+
+### 四、左引用与右引用
+
+### 五、std::forward与std::move
+
+
+
 ## 编译与操作系统相关
 
 ### 堆、栈、静态数据区
@@ -278,3 +344,6 @@ extern是C/C++语言中表明函数和全局**变量作用范围**的关键字�
 当被用于成员函数时，`final`紧跟着成员函数的声明或定义部分出现;当被用于一个类时，`final`出现在类定义开始之处，紧跟着类名。
 
 个人理解为，`final`是为了防止一个虚函数被其他程序员再重载，从而其实现被覆盖;也防止一个类被派生。
+
+### 5. mutable关键字含义？
+
