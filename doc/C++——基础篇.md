@@ -347,17 +347,50 @@ C++ 11新特性推出后，引用的特性又丰富起来。从[引用与指针]
 因此，不管C++ 11的引用中有多少新的东西，其本质仍然是，某样东西的别名。
 
 - 左值引用：alias  to an existing object
-- 右值引用：used to extend the lifetimes of temporary objects
+
+  - 更改引用就是在更改原变量本身
+  - `const xxx &`就不能通过引用更改原变量
+  - 当一个函数返回一个左值引用时，函数本身就可以被当做左值来赋值
+
+  ```C++
+      std::string s = "Ex";
+      std::string& r1 = s;
+      const std::string& r2 = s;
+   
+      r1 += "ample";           // modifies s
+  //  r2 += "!";               // error: cannot modify through reference to const
+      std::cout << r2 << '\n'; // prints s, which now holds "Example"
+  ```
+
+- 右值引用：used to extend the lifetimes of temporary objects. Through lvalue reference can extend lifttime, but can't modify through reference to const.
+
+  ```C++
+      std::string s1 = "Test";
+  //  std::string&& r1 = s1;           // error: can't bind to lvalue
+   
+      const std::string& r2 = s1 + s1; // okay: lvalue reference to const extends lifetime
+  //  r2 += "Test";                    // error: can't modify through reference to const
+   
+      std::string&& r3 = s1 + s1;      // okay: rvalue reference extends lifetime
+      r3 += "Test";                    // okay: can modify through reference to non-const
+      std::cout << r3 << '\n';
+  ```
+
+  右值引用的好处在于，它可以延长一些暂时的立即数或者结果的生命周期，让它更好地被用起来，减少拷贝过程中的性能消耗。
+
 - 转发引用(Forwarding reference)：
+
 - 悬挂引用(Dangling reference)：
 
 他们的使用示例在[这里](../src/basic/reference)。
+
+
 
 > reference to reference is not allowed, but it is permitted to form references to references through type manipulations in templates or typedefs
 
 初看，这是一个非常令人困惑的说明，为何使用了`typedef`和`template`后，引用的引用就是合法的呢？事实上，这与`std::forward`的规则相关。
 
-### 六、std::forward与std::move
+### 六、移动语义与转发
 
 
 
