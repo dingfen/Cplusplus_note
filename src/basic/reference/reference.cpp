@@ -1,3 +1,5 @@
+// It is permitted to form references to references 
+// through type manipulations in templates or typedefs
 typedef int&  lref;
 typedef int&& rref;
 int n;

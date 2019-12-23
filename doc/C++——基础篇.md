@@ -348,9 +348,14 @@ C++ 11新特性推出后，引用的特性又丰富起来。从[引用与指针]
 
 - 左值引用：alias  to an existing object
 - 右值引用：used to extend the lifetimes of temporary objects
-- 
+- 转发引用(Forwarding reference)：
+- 悬挂引用(Dangling reference)：
 
+他们的使用示例在[这里](../src/basic/reference)。
 
+> reference to reference is not allowed, but it is permitted to form references to references through type manipulations in templates or typedefs
+
+初看，这是一个非常令人困惑的说明，为何使用了`typedef`和`template`后，引用的引用就是合法的呢？事实上，这与`std::forward`的规则相关。
 
 ### 六、std::forward与std::move
 
