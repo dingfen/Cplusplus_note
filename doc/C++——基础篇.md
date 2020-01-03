@@ -127,6 +127,65 @@ class {
 
 具体事例可以参见[如此代码](../src/basic/macro)
 
+### 四、可变参数函数
+
+在编写程序时，我们经常会遇到函数在编译期间接收到的参数数量不确定的情况。比如，经常使用的`printf()`函数，我们可以传入任意数量的参数。那么，这一切究竟如何实现？
+
+事实上，C语言就已经提供了这样的一个解决方案，示例代码在[这里](../src/basic/vargument)：
+
+```C++
+int add(int num, ...) {
+    va_list valist;
+    int sum = 0;
+    int i;
+
+    // 为 传入的参数初始化 valist
+    va_start(valist, num);
+
+    // 访问 所有的参数
+    for(i = 0; i < num; i++) {
+        sum += va_arg(valist, int);
+    }
+
+    // 结束调用valist 清理内存
+    va_end(valist);
+
+    return sum;
+}
+```
+
+ `add()` 最后一个参数写成省略号，即三个点号（**...**），省略号之前的那个参数是 `int`，代表了要传递的可变参数的总数。为了使用这个功能，需要使用 `stdarg.h` 头文件，该文件提供了实现可变参数功能的函数和宏。具体步骤如下：
+
+1. 定义一个函数，最后一个参数为省略号，省略号前面可以设置自定义参数。
+
+2. 在函数定义中创建一个 `va_list` 类型变量，该类型是在 `stdarg.h` 头文件中定义的。
+
+3. 使用 `int` 参数和 `va_start` 宏来初始化 `va_list` 变量为一个参数列表。宏 `va_start` 是在 `stdarg.h` 头文件中定义的。
+
+4. 使用` va_arg` 宏和 `va_list` 变量来访问参数列表中的每个项。
+
+5. 使用宏` va_end` 来清理赋予 `va_list` 变量的内存。
+
+除此之外，还有一个不被用到的`va_copy`，示例如下：
+
+```C
+    va_list valist1;
+    va_list valist2;
+
+    va_start(valist1, num);
+    // valist2 is dest  after that valist2 equals to valist1
+    va_copy(valist2, valist1);
+
+    for (int i = 0; i < num; i++) {
+        printf("%d, ", va_arg(valist2, int));
+    }
+
+    va_end(valist1);
+    va_end(valist2);
+```
+
+
+
 ## C++类
 
 ### 一、不可拷贝类
@@ -250,7 +309,76 @@ C++的不同之处在于，它既支持指针，又支持引用。表面上看�
   - 需要用到指针偏移计算或者有时候传递`NULL`指针是必要的
   - 实现数据结构，比如树、链表等需要用指针
 
-### 四、左值与右值
+### 四、virtual相关
+
+首先，我们来探究一下什么是虚函数(Virtual Function)。
+
+虚函数就是指在基类中被声明，在派生类被重写的函数，并且该函数用一个重要的特性：**用一个声明为基类的指针，指向任意一个子类对象，调用相应的虚函数，那么具体调用哪一个函数将是在运行时动态指定的。**
+
+因为编写代码的时候并不能确定到底调用基类函数还是哪个派生类函数，所以被成为虚函数。如果没有使用虚函数的话，则利用基类指针调用相应的函数的时候，将总被限制在基类函数本身，而无法调用到子类中被重写的函数，那么C++的多态就无法实现了。
+
+那么到底虚函数有什么好处呢？我们从一个[例子](../src/basic/virtual)开始了解，顺便也提一下多态的概念
+
+```C++
+class Shape{
+public:
+    virtual void show() { cout << "I am Shape." <<endl; }
+    void print() { cout << "It is Shape." <<endl; }
+};
+
+class Rectangle : public Shape {
+public:
+    void show() { cout << "I am Rectangle." <<endl; }
+    void print() { cout << "It is Rectangle." <<endl; }
+};
+
+class Triangle : public Shape {
+public:
+    void show() { cout << "I am Triangle." <<endl; }
+    void print() {cout << "It is Triangle." <<endl; }
+};
+
+class Circle : public Shape {
+public:
+    void show() { cout << "I am Circle." <<endl; }
+    void print() { cout << "It is Circle." <<endl; }
+};
+
+Shape* spt[3];
+Circle c;
+Rectangle r;
+Triangle t;    
+    spt[0] = &c;
+    spt[1] = &r;
+    spt[2] = &t;
+    for (int i = 0; i < 3; i++) {
+        spt[i]->show();
+        spt[i]->print();
+    }
+```
+
+在该例中，我们定义了一个基类`Shape`和三个子类`Rectangle`、`Triangle`、`Circle`，并实现了两个函数
+
+最后运行结果如下：当用`virtual`关键字时，该函数就是虚函数，可以在**运行时根据指针指向的具体类型来调用相应的函数**，而不是直接根据指针的类型在编译时决定调用的函数。
+
+```
+I am Circle.
+It is Shape.
+I am Rectangle.
+It is Shape.
+I am Triangle.
+It is Shape.
+```
+
+运行时的多态只有通过基类的指针指向其派生类来实现。注意：如果在基类中的声明已经加上了`virtual`关键字，那么在派生类中的实现不需要添上`virtual`了。
+
+### 五、抽象类
+
+## C++ 新特性
+
+### 一、左值与右值
+
+C++ 11新特性中，为了避免临时变量的拷贝，提高性能，提出了左值(lvalue)右值(rvalue)以及其他的概念。
 
 首先，我们直观地理解一下左值(lvalue)与右值(rvalue)。左值一般出现在`=`左边，右值一般出现在`=`右边。在C++中，也有严格的定义。
 
@@ -336,7 +464,7 @@ int __internal_unique_name = 10;
 const int& ref = __internal_unique_name;
 ```
 
-### 五、Reference
+### 二、引用
 
 C++ 11新特性推出后，引用的特性又丰富起来。从[引用与指针](#Three)中我们知道了引用的一些C++ 98的用法，现在我们继续学习一些新特性新用法。
 
@@ -384,15 +512,73 @@ C++ 11新特性推出后，引用的特性又丰富起来。从[引用与指针]
 
 他们的使用示例在[这里](../src/basic/reference)。
 
-
-
 > reference to reference is not allowed, but it is permitted to form references to references through type manipulations in templates or typedefs
 
 初看，这是一个非常令人困惑的说明，为何使用了`typedef`和`template`后，引用的引用就是合法的呢？事实上，这与`std::forward`的规则相关。
 
-### 六、移动语义与转发
+### 三、移动语义与转发
 
+[参考本文](https://zhuanlan.zhihu.com/p/55856487)
 
+在之前的C++ 98中，C++传值的方式都是拷贝传值，然而，若遇到一个比较大的参数，拷贝传值的开销非常大。例如：
+
+```C++
+void Demo::set(const string &s) {
+    m_s = s;	// copy
+}
+
+Demo d;
+d.set("a very very long string");
+```
+
+上面的代码在执行过程中，可能有下列几步操作：
+
+1. 临时变量字符串先被构造，将字符串复制一遍
+2. 临时变量将内容再复制到成员变量中
+3. 临时变量被销毁
+
+这里能不能优化一下呢? 临时变量反正都要被回收, 如果能直接把临时变量的内容, 和成员变量内容交换一下, 就能避免复制了呀，如下:
+
+1. 成员变量内部的指针指向字符串所在的内存
+2. 临时变量内部的指针指向成员变量以前所指向的内存
+3. 临时变量被销毁
+
+上面这个操作避免了一次拷贝，其实这就是所谓的move语义。
+
+事实上，之前我们介绍的左值、右值引用等都是为了避免不必要的拷贝操作而引入的。
+
+于是，现在避免拷贝操作时，我们需要如下两个函数
+
+```C++
+void Demo::set(const string &s) {
+    m_s = s;	// copy
+}
+
+void Demo::set(const string &&s) {
+    m_s = std::move(s);	// avoid unnecessary copy
+}
+
+Demo d;
+string s1("a very very long string");
+d.set(s1);
+d.set("a very long string");	// temporary var use move not copy
+```
+
+于是，在传递的参数是左值时，使用第一个`set()`，而参数为临时变量时，使用第二个`set()`。可是，这很明显增加了代码的重复率！
+
+这时候就需要用到转发了，相关示例代码在[这里](../src/basic/move_forward)
+
+```C++
+template<typename T>
+void Demo::set(T && s) {
+    m_s = std::forward<T>(s);
+}
+
+//when s is a rvalue, std::forward<T> equals to static_cast<[const] T1 &&>(s)
+//when s is a lvalue, std::forward<T> equals to static_cast<[const] T1 &>(s)
+```
+
+那么有了`std::forward`为什么还保留`std::move`？首先，forward常用于template函数中，使用的时候必须要多带一个template参数T: `forward<T>`，代码略复杂。还有，明确只需要`move`的情况而用`forward`，代码意图不清晰，其他人看着理解起来比较费劲。更技术上来说，他们都可以被`static_cast`替代。为什么不用`static_cast`呢？ 也就是为了读着方便易懂。
 
 ## 编译与操作系统相关
 
