@@ -19,3 +19,25 @@ STL有六大组件
 - 配接器(Adapters) 有时候，配接器被归在了容器内部，但其实配接器有些不同于容器，如queue、stack，它们的底层事实上都完全借助deque实现。
 - 配置器(allocators) 用于分配内存空间，负责管理空间配置的class template
 
+我对仿函数的理解不够深刻，一开始甚至不懂仿函数是在干什么，这里有个[例子](../src/STL/introduction)：
+
+```C++
+template<class T>
+class print {
+public:
+    void operator() (const T & elem) {
+        cout << elem << endl;
+    };
+};
+
+int main(int argc, char const *argv[])
+{
+    vector<int> a{1,2,3,4,5};
+    for_each(a.begin(), a.end(), print<int>());
+}
+```
+
+这里的`class print`就是仿函数，重载了`operator()`的class template。这里最后一行，就是用`print<int>`的一个临时对象，传入到`for_each()`中，进行打印操作，用法非常类似于函数指针。
+
+那么，仿函数与函数指针的区别在哪里呢？首先，仿函数是一个对象，对象就可以有自己的内部状态，可以根据自身的状态不同来作出不同的反应，这是函数指针做不到的。比如之前的例子中，若`print`类中再添加一个成员变量，根据成员变量的数值来决定输出格式，这是函数指针做不到的。当然你可以说函数指针使用静态变量来完成，但静态变量又有可能被其他程序修改导致不确定性，封装也没有对象好。其次，编译器可以内联(inline)仿函数，而函数指针不能这样，因此效率会高一些。
+
