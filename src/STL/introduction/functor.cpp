@@ -22,6 +22,6 @@ int main(int argc, char const *argv[])
 
     for_each(a.begin(), a.end(), print<int>());
     for_each(b, b+5, print<double>());
-    print<char>(c);
+    print<char>()(d);
     return 0;
 }
