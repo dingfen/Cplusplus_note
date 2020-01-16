@@ -412,6 +412,22 @@ int main(int argc, char const *argv[])
 }
 ```
 
+在明白了`::`的意思是调用全局变量后，再回到`::operator new`，事实上，我们平时使用的`new`都是重载于类的操作符，并不是全局的`new()`函数，平时我们写的这句话
+
+```C++
+Obj* p = new Obj(value);
+```
+
+等同于下列三句话
+
+```C++
+void* v = ::operator new(sizeof(Obj)); //just allocate memory, not do construction.
+p = reinterpret_cast<Obj*>(v);
+p->Obj::Obj(value);
+```
+
+上面的第一句仅仅是在做分配空间的活，没有进行对象构建，这就可以把分配空间和构建对象活动分开，这样精密性分工有利于STL提升效率。
+
 匿名命名空间。简而言之，就是一个没有命名的命名空间，它的作用域也就是从文件中的声明点开始到末尾。如：
 
 ```C++
