@@ -10,6 +10,7 @@ namespace MY {
     
 template <class T>
 inline T* __allocate(ptrdiff_t size, T*) {
+    // set new handler 
     std::set_new_handler(0);
     // allocate memory only
     T* tmp = (T*)(::operator new)((size_t) (size * sizeof(T)));
@@ -81,10 +82,33 @@ public:
     };
 };
 
+// template specialization  template <> added in g++
 template <>
 class allocator<void> {
 public:
-    typedef void* pointer;
+    typedef size_t      size_type;
+    typedef ptrdiff_t   difference_type;
+    typedef void*       pointer;
+    typedef const void* const_pointer;
+    typedef void        value_type;
+
+    template <class T> struct rebind {
+        typedef allocator<T> other;
+    };
+};
+
+
+template<class T, class Alloc=std::allocator<T>>
+class simple_alloc {
+public:
+    static T *allocate(size_t n)
+        { return 0 == n ? 0 : (T*)Alloc::allocate(n * sizeof(T)); };
+    static T *allocate(void)
+        { return (T*)Alloc::allocate(sizeof(T)); };
+    static void deallocate(T *p)
+        { Alloc::deallocate(p, sizeof(T)); };
+    static void deallocate(T *p , size_t n)
+        { if (0 != n) Alloc::deallocate(p, n*sizeof(T)); };
 };
 
 } // namespace MY

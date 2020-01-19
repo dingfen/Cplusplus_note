@@ -45,7 +45,28 @@ int main(int argc, char const *argv[])
 
 ### 设计一个简单的空间配置器
 
+根据STL规范，`allocator`必须有以下接口
 
+- allocate() 函数，用于分配内存空间
+- deallocate() 函数，用于收回内存空间
+- construct() 函数，用于构建对象
+- destroy() 函数，用于析构对象
+- address() 函数用于返回对象的地址
+- rebind() 函数
+
+外加上一些构造函数和析构函数，以及STL规范中要求的traits特性。从[示例](../src/STL/alloc)中可以看出各个函数的功能实现。
+
+一般而言，常用的C++内存配置操作时这样的。
+
+```C++
+class Abc { ... };
+Abc* pf = new Abc;	// 配置内存 构造对象
+delete pf;			// 析构对象 释放内存
+```
+
+这其中，`new`事实上做了两步操作：1、调用`::operator new`配置内存。2、调用`Abc()`构造对象。`delete`也做了两步操作：1、调用`~Abc()`函数析构对象。2、调用`::operator delete`释放内存。
+
+现在STL将这两步分开，内存配置由`allocator::allocate()`完成，构造对象由`::construct`完成，内存释放由`allocator::deallocate()`完成，析构对象由`::destroy()`完成。
 
 ### 关于空闲块链表
 
