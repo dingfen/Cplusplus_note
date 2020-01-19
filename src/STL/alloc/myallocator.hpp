@@ -7,7 +7,9 @@
 #include <climits>
 
 namespace MY {
-    
+
+#ifdef __STL_USE_STD_ALLOCATORS
+
 template <class T>
 inline T* __allocate(ptrdiff_t size, T*) {
     // set new handler 
@@ -38,7 +40,7 @@ inline void __destory(T* t) {
 
 
 template <class T>
-class allocator {
+class _stl_allocator {
 public:
     typedef T           value_type;
     typedef T*          pointer;
@@ -78,13 +80,13 @@ public:
 
     template <class U>
     struct rebind {
-        typedef allocator<U> other;
+        typedef _stl_allocator<U> other;
     };
 };
 
 // template specialization  template <> added in g++
 template <>
-class allocator<void> {
+class _stl_allocator<void> {
 public:
     typedef size_t      size_type;
     typedef ptrdiff_t   difference_type;
@@ -93,12 +95,57 @@ public:
     typedef void        value_type;
 
     template <class T> struct rebind {
-        typedef allocator<T> other;
+        typedef _stl_allocator<T> other;
     };
 };
 
+#endif
 
-template<class T, class Alloc=std::allocator<T>>
+#define __THROW_BAD_ALLOC fprintf(stderr, "out of memory\n"); exit(1)
+
+template<int inst>
+class alloc_template {
+
+private:
+    static void *S_oom_malloc(size_t n) {
+        void (* malloc_handler)();
+        void* result;
+        for (;;) {
+            malloc_handler = malloc_alloc_oom_handler;
+            if (0 == malloc_handler) { __THROW_BAD_ALLOC; }
+            (*malloc_handler)();
+            result = malloc(n);
+            if (result) 
+                return result;
+        }
+    }
+
+    static void (* malloc_alloc_oom_handler)();
+
+public:
+    static void* allocate(size_t n) {
+        void* result = malloc(n);
+        if (0 == result) result = S_oom_malloc(n);
+        return result;
+    }
+
+    static void deallocate(void *p, size_t) {
+        free(p);
+    }
+
+    static void (* set_malloc_handler(void (*f)()))() {
+        void (* old)() = malloc_alloc_oom_handler;
+        malloc_alloc_oom_handler = f;
+        return(old);
+    }
+};
+
+template <int inst>
+void (* alloc_template<inst>::malloc_alloc_oom_handler)() = 0;
+
+typedef alloc_template<0> alloc;
+
+template<class T, class Alloc=alloc>
 class simple_alloc {
 public:
     static T *allocate(size_t n)
