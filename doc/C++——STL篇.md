@@ -143,3 +143,88 @@ void* refill(size_t n)
 ```
 
 上述代码做了简化，`chunk`的内存空间是直接通过`malloc()`从堆中获取的，但是事实上SGI STL还在二级配置器中维护了内存池，先从内存池中取出内存空间，若内存池空间不足，在从堆中获取。
+
+## 迭代器与traits编程
+
+​	迭代器在STL的实际应用中发挥着重要的作用，STL的思想在于将数据容器(containers)和算法(algorithms)分开，彼此独立设计，然后用迭代器(iterator)将它们撮合在一起。对迭代器的理解，一种非常粗糙但有效的方法是，把它们都认为是一种智能指针(smart pointer)。因为迭代器的基本功能就是完成了对`operator*`（内容提领dereference）和`operator->`（成员访问member access）的重载。当然大多数迭代器也有对`operator++`和`operator--`的重载。
+
+### 萃取初识
+
+​	除了上述的这些功能外，迭代器还提供了一个重要的功能：提取型别。在使用迭代器时，很有可能会用到迭代器所指之物的型别。然而C++只支持`sizeof()`，不支持`typeof()`。
+
+​	但这并不表明C++无法做到。利用模板偏特化以及`typedef`，一样可以精确地获得迭代器指向之物的型别。
+
+```C++
+// “萃取” 机制
+template<class I>
+struct iterator_traits {
+	typedef typename I::value_type	value_type;
+};
+
+// MyIter
+template<class T>
+struct MyIter {
+  	typedef T value_type;
+  	T *ptr;
+    // ...
+};
+
+
+template<class I>
+typename iterator_traits<I>::value_type	// 这一行便是 提取出来的型别 作为函数的返回类型
+    func(I iter) {
+    // ...
+}
+
+// 当调用函数时
+MyIter<T> iter;
+func(iter);	// 返回值的类型就是 T
+```
+
+咋一看有点复杂，但慢慢整理就会发现其中的奥秘：
+
+- 首先，`func(iter)`被调用，`template<class I>`中的`I`就是`MyIter`
+- 传入到`iterator_traits<I>::value_type`，而根据`iterator_traits`类内部的`typedef`，返回值类型就是`I::value_type`
+- 即`MyIter::value_type`，而再根据`typedef`，就明白它指的就是类型`T`。Congratulations，这就是我们要的类型。
+
+当然，你可能会问，万一遇到了原生指针的情况呢？毕竟，不是所有的迭代器都是class type。如果不是class type，就无法定义内嵌的型别了！
+
+这时候模板偏特化就派上用场了：
+
+```C++
+template<class I>
+typename iterator_traits<I*> {	// 偏特化版，当传入的类型是原生指针，就会使用这个情况
+    typedef I value_type;
+}
+```
+
+与上述情况类似，当遇到了指向常数的指针时，我们也可以这么干：
+
+```C++
+template<class I>
+typename iterator_traits<const I*> {	// 偏特化版，很多时候，我们可不希望得到一个无法赋值的东西
+    typedef I value_type;
+}
+```
+
+在SGI STL中，这类技巧几乎被用到了极致！
+
+### 迭代器的五种相应型别
+
+```C++
+template<class T>
+struct iterator_traits {
+    typedef typename I::iterator_category	iterator_category;
+    typedef typename I::value_type			value_type;
+    typedef typename I::difference_type		difference_type;
+    typedef typename I::pointer				pointer;
+    typedef typename I::reference			reference;
+};
+```
+
+如果你希望你所开发的容器能与STL兼容，那么一定不能忘记，要为你开发的容器的迭代器定义这五种型别。
+
+## 序列容器
+
+
+
