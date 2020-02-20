@@ -4,6 +4,7 @@
 #include <memory>
 #include <iostream>
 #include "../alloc/myallocator.hpp"
+#include "../alloc/myconstruct.hpp"
 
 namespace MY {
 
@@ -13,6 +14,7 @@ public:
     typedef T               value_type;
     typedef value_type*     pointer;
     typedef value_type*     iterator;
+    typedef const value_type*   const_iterator;
     typedef value_type&     reference;
     typedef size_t          size_type;
     typedef ptrdiff_t       difference_type;
@@ -35,16 +37,34 @@ protected:
         finish = start + n;
         end_of_storage = finish;
     }
+
+    void deallocate() {
+        if (start)
+            data_allocator::deallocate(start, end_of_storage - start);
+    }
 public:
     iterator begin()    { return start; }
     iterator end()      { return finish; }
-    size_type size()    { return size_type(finish - start); }
+    const_iterator begin() const   { return start; }
+    const_iterator end() const     { return finish; }
+    size_type size() const   { return size_type(finish - start); }
     bool empty()        { return start == finish; }
     reference operator[](size_type n) { return *(start + n); }
 
     vector() : start(0), finish(0), end_of_storage(0) {}
     vector(size_type n, const T& value) {fill_initialize(n, value); }
     explicit vector(size_type n) {fill_initialize(n, T());}
+    vector(const vector& x) {
+        start = data_allocator::allocate(x.size());
+        finish = start + x.size();
+        end_of_storage = finish;
+        std::uninitialized_copy(x.begin(), x.end(), start); 
+    }
+
+    ~vector() {
+        mydestroy<iterator, T>(start, finish);
+        deallocate();
+    }
 
     reference front()   { return *begin(); }
     reference back()    { return *end(); }
