@@ -222,7 +222,128 @@ struct iterator_traits {
 };
 ```
 
-如果你希望你所开发的容器能与STL兼容，那么一定不能忘记，要为你开发的容器的迭代器定义这五种型别。
+如果你希望你所开发的容器能与STL兼容，那么一定不能忘记，要为你开发的容器的迭代器定义这五种型别。当然，为了正确，还需要加入偏特化
+
+```C++
+template<class T>
+struct iterator_traits<T*> {
+    typedef typename I::value_type			value_type;
+    typedef 		 ptrdiff_t				difference_type;
+    typedef 		 T*						pointer;
+    typedef			 T&						reference;
+    typedef	typename I::iterator_category	iterator_category;
+}
+
+template<class T>
+struct iterator_traits<const T*> {
+    typedef typename I::value_type			value_type;
+    typedef 		 ptrdiff_t				difference_type;
+    typedef 		 const T*				pointer;
+    typedef			 const T&				reference;
+    typedef	typename I::iterator_category	iterator_category;
+}
+```
+
+对于`iterator_category`，还需要费一点笔墨。
+
+首先，来对迭代器做一个简单的分类：
+
+- Input Iterator：只读，可以递增，不允许外界的改变，通常作为输入
+- Output Iterator：只写，也可以递增，通常作为输出
+- Forward Iterator：允许“写入型”算法进行读写操作，可以递增，但不能递减
+- Bidirectional Iterator：可以递增递减，双向移动
+- Random Access Iterator：提供了所有指针的算术能力，包括+n、-n，相减，比较等
+
+这五种类型，都存在着继承关系，这是所谓的concept（概念）与refinement（强化）的关系，在STL设计中发挥了重要的作用。
+
+```C++
+struct input_iterator_tag {};
+struct output_iterator_tag {};
+struct forward_iterator_tag : public input_iterator_tag {};
+struct bidirectional_iterator_tag : public forward_iterator_tag {};
+struct random_access_iterator_tag : public bidirectional_iterator_tag {};
+```
+
+之所以对`iterator`进行分类，是为了在合乎容器规范的情况下，尽可能达到最高效率。
+
+试想：在链表容器list中，由于容器设计限制，只能使用`bidirectional_iterator`进行递增或递减，而vector使用的是`random_access_iterator`，此时若设计一个`distance()`函数来求两个`iterator`的距离，若错将`random_access_iterator`喂给了vector，那么效率会直接从O(1)掉到O(n)！
+
+在做好各个`iterator`的实现后，通过准确分类，调用不同实现函数，尽可能提高效率，以下以`advance()`函数为例，即使迭代器前进n步。
+
+```C++
+template <class InputIterator, class Distance>
+    inline void __advance(InputIterator& i, Distance n, input_iterator_tag)
+{
+    // input_iterator 所以只能一步步前进
+    while(n--) ++i;
+}
+
+template <class ForwardIterator, class Distance>
+    inline void __advance(ForwardIterator& i, Distance n, forward_iterator_tag)
+{
+    // forward_iterator 所以只能一步步前进
+    __advance(i, n, input_iterator_tag());
+}
+
+template <class BidirectionalIterator, class Distance>
+    inline void __advance(BidirectionalIterator& i, Distance n, 								 bidirectional_iterator_tag)
+{
+    // BidirectionalIterator 也只能一步步前进或者后退
+    if (n >= 0)
+        while(n--) ++i;
+    else
+        while(n++) --i;
+}
+
+template <class RandomAccessIterator, class Distance>
+    inline void __advance(RandomAccessIterator &i, Distance n, random_access_iterator_tag)
+{
+    i += n;	// 直接跳跃
+}
+```
+
+很明显，最后一个参数都只是一种型别的声明，并不在具体计算中起什么作用，纯粹是为了区分。那么，接下来的问题，就是如何在编译时，确定到底要调用哪一个函数。
+
+这就要借用萃取机制了！
+
+```C++
+template <class InputIterator, class Distance>
+    inline void advance(InputIterator &i, Distance n)
+{
+    __advance(i, n, iterator_traits<InputIterator>::iterator_category);
+}
+```
+
+### std::iterator
+
+我们终于快要结束关于萃取这一部分的叙述了，是不是感觉内容很多，突然变得复杂了起来，原来设计一个与STL架构兼容的`iterator`需要注意很多地方，不过，好在STL给我们提供了便利：
+
+```C++
+template <class Category, 
+		  class T, 
+          class Distance = ptrdiff_t, 
+          class Pointer = T*, 
+          class Reference = T&>
+  struct iterator {
+      typedef Category 		iterator_category;
+      typedef T				value_type;
+      typedef Distance		difference_type;
+      typedef Pointer		pointer;
+      typedef Reference		reference;
+  }
+```
+
+若要设计一个兼容STL的`iterator`，只需要继承`std::iterator`就可以了，因为该类仅包含型别，因此继承它不会造成任何运行上的额外负担，而且在一般情况下，只需要提高两个参数就可以了：
+
+```C++
+template <class Item>
+    struct ListIter : public std::iterator<std::forward_iterator_tag, Item>
+    {...}
+```
+
+
+
+萃取编程技术大量地应用在了C++工程开发当中，它利用了“内嵌型别”的编程技巧，弥补了C++语言本身的缺陷。
 
 ## 序列容器
 
