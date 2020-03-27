@@ -1,7 +1,5 @@
 [TOC]
 
-
-
 # C++——STL篇
 
 ## 简介
@@ -340,8 +338,6 @@ template <class Item>
     struct ListIter : public std::iterator<std::forward_iterator_tag, Item>
     {...}
 ```
-
-
 
 萃取编程技术大量地应用在了C++工程开发当中，它利用了“内嵌型别”的编程技巧，弥补了C++语言本身的缺陷。
 

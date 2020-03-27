@@ -153,4 +153,18 @@ __global__ void reduce1(int *g_idata, int *g_odata) {
 }
 ```
 
-该方案的缺点在于，每次筛选的线程数，都是含有2幂次因子的
+该方案的缺点在于，每次可以执行的线程数，都是含有2幂次因子的。
+
+由于CUDA中对线程的执行控制都是以32个线程为单位的（被称作Warp）。Warp中的线程通常会用于执行相同的代码，实现SIMT(Singel Instruction Multiple Threads)。但是若遇到Warp中的线程必须走不同的路径时，例如出现条件判断语句：
+
+```C++
+if (tid % 2 ==0) {
+    // do something
+} else {
+    // do something else 
+}
+```
+
+CUDA runtime必须花额外的代价让warp内的线程分开，执行不同的代码。这就会影响效率
+
+而这样安排线程的执行无疑是
