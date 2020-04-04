@@ -688,6 +688,103 @@ void Demo::set(T && s) {
 
 那么有了`std::forward`为什么还保留`std::move`？首先，forward常用于template函数中，使用的时候必须要多带一个template参数T: `forward<T>`，代码略复杂。还有，明确只需要`move`的情况而用`forward`，代码意图不清晰，其他人看着理解起来比较费劲。更技术上来说，他们都可以被`static_cast`替代。为什么不用`static_cast`呢？ 也就是为了读着方便易懂。
 
+### 四、regex
+
+虽然使用C/C++来处理正则化表达式的情景已经不多见（而且也很麻烦），但是在后端开发中处理xml或html信息时，会一些regex的API还是可以省下很多麻烦的。这里重点介绍C++11中的regex运用，关于C语言中使用regex，可以参考如下[示例](../src/basic/regex/regex.c)。
+
+首先，介绍一些常用元字符：
+
+| 符号   | 意义                                                         | 注意                                        |
+| ------ | ------------------------------------------------------------ | ------------------------------------------- |
+| .      | 匹配除"\n"之外的任何单个字符                                 |                                             |
+| ^      | 匹配输入字符串的开始位置，不匹配任何字符                     |                                             |
+| $      | 匹配输入字符串结尾的位置，不匹配任何字符                     |                                             |
+| *      | 零次或多次匹配前面的字符或子表达式                           |                                             |
+| +      | 一次或多次匹配前面的字符或子表达式                           |                                             |
+| ?      | 前面的字符或子表达式 出现或不出现                            |                                             |
+| \|     | 将两个匹配条件进行逻辑"或"运算                               |                                             |
+| \      | 将下一字符标记为特殊字符、文本、反向引用或八进制转义符       | ^ 字符本身需使用 <br>\^$ . *也是如此        |
+| [xyz]  | 字符集，匹配包含的任一字符                                   | [a-z]表示所有小写字母                       |
+| [^xyz] | 反向字符集，匹配未包含的任何字符                             | [^a-z]表示不是小写字母                      |
+| {n,m}  | ”n”和”m”是非负整数，n<=m，匹配至少n次，至多m次               | {n}正好出现n次<br>{n,}至少出现n次           |
+| ( )    | 将(和)之间的表达式定义为组，并且将匹配这个表达式的字符保存到一个临时区域 | 最多可以保存9个<br>用”\1”到”\9”的符号来引用 |
+
+还有一些转义字符，使用它们表示更加方便
+
+| 符号 | 意义                                                 | 注意                 |
+| ---- | ---------------------------------------------------- | -------------------- |
+| \w   | 匹配字母或数字或下划线，任意一个字母或数字或下划线   |                      |
+| \W   | 匹配任意不是字母、数字、下划线的字符                 |                      |
+| \s   | 匹配任意的空白符，含空格、制表符、换页符等的任意一个 | 与”[\f\n\r\t\v]”等效 |
+| \S   | 匹配任意不是空白符的字符                             |                      |
+| \d   | 匹配数字，任意一个数字，0~9中的任意一个              | 等效于”[0-9]”        |
+| \D   | 匹配任意非数字的字符                                 |                      |
+| \b   | 匹配一个字边界，即字与空格间的位置，不匹配任何字符   | "er\b"匹配"never"    |
+| \B   | 非字边界匹配                                         |                      |
+| \f   | 匹配一个换页符                                       | 等价于”\x0c”和”\cL”  |
+| \n   | 匹配一个换行符                                       | 等价于”\x0a”和”\cJ”  |
+| \t   | 匹配一个制表符                                       | 等价于”\x09”和”\cI”  |
+| \v   | 匹配一个垂直制表符                                   | 等价于”\x0b”和”\cK”  |
+| \cx  | 匹配”x”指示的控制字符                                | \cM匹配Ctl-M或回车符 |
+| \r   | 匹配一个回车符                                       | 等价于”\x0d”和”\cM”  |
+
+下面，我们来看一下一些常用的API
+
+- `std::regex_match`全文匹配，要求整个字符串都要符合匹配规则，返回`bool`true（匹配成功）或false（匹配失败），可以加入一个可选参数`regex_constants::match_flag_type`，指示如何匹配。有时候，我们不关心字符串是否与regex匹配，还需要匹配的结果，那么可以这么做：
+
+  ```C++
+  const char cstr[] = "subject";
+  std::regex e("(sub)(.*)");
+  std::cmatch cm; // same as std::match_results<const char*> cm;
+  std::regex_match(cstr, cm, e);	// cm is the vector of results
+  
+  std::string s("subject");
+  std::smatch sm;	// same as std::match_results<string::const_iterator> sm;
+  std::regex_match(s, sm, e);
+  ```
+
+  更多详细[示例](../src/basic/regex/regex_match.cpp)
+
+- `std::regex_search`搜索匹配，搜索字符串中符合正则化规则的子串，参数与返回类型与`std::regex_match`一致，详细[示例](../src/basic/regex/regex_search.cpp)
+
+- `std::regex_replace`替换匹配，将符合匹配规则的字符串替换成另一个字符串，详细[示例](../src/basic/regex/regex_search.cpp)
+
+  ```C++
+  std::string s ("there is a subsequence in the string\n");
+  std::regex e ("\\b(sub)([^ ]*)");   // matches words beginning by "sub"
+  
+  // using string/c-string (3) version:
+  std::cout << std::regex_replace (s,e,"sub-$2");
+  ```
+
+## 杂项
+
+### locale
+
+C/C++程序中，**locale（即系统区域设置），用于决定程序所使用的当前语言编码、日期格式、数字格式及其它与区域有关的设置，**locale设置的正确与否将影响到程序中字符串处理（`wchar_t`如何输出、`strftime()`的格式等）。
+
+C与C++的locale是独立的，接下来，我们分别讨论它们的用法。
+
+C标准库中使用`locale.h`头文件定义了特定地域的设置，比如日期格式和货币符号。库中含有一些宏和函数，还定义了`lconv`数据结构。
+
+| 常量        | 解释                                         |
+| ----------- | -------------------------------------------- |
+| LC_ALL      | 选择整个 C 本地环境                          |
+| LC_COLLATE  | 影响 strcoll 和 strxfrm 函数                 |
+| LC_CTYPE    | 影响所有字符函数                             |
+| LC_MONETARY | 影响 localeconv 函数提供的货币信息           |
+| LC_NUMERIC  | 影响 localeconv 函数提供的小数点格式化和信息 |
+| LC_TIME     | 影响 strftime 函数                           |
+
+```C
+char *setlocale(int category, const char *locale)	//用于设置地域化信息
+struct lconv *localeconv(void)						//用于读取地域化信息 
+```
+
+更多示例请看[这里](../src/basic/locale)
+
+C++的中也可以使用C中的那一套规则，但在C的基础上，也增加了很多新的内容
+
 ## 编译与操作系统相关
 
 ### 堆、栈、静态数据区
