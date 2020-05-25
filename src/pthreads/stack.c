@@ -34,17 +34,15 @@ int main(int argc, char *argv[])
 	
 	pthread_attr_init(&attr);
 	
-	//your code here
 	pthread_attr_getstacksize(&attr, &stacksize); 
-	//end of your code
+	
 	printf("Default stack size = %li\n", stacksize); 
 	
 	stacksize = sizeof(double)*N*N+MEGEXTRA; 
 	printf("Amount of stack needed per thread = %li\n",stacksize); 
 	
-	//your code here
 	pthread_attr_setstacksize(&attr, stacksize); 
-	//end of your code
+	
 	printf("Creating threads with stack size = %li bytes\n",stacksize); 
 	
 	for(t=0; t<NUMTHREADS; t++){ 
