@@ -309,13 +309,13 @@ int pthread_barrier_destroy(pthread_barrier_t *barrier);
 
 ## 线程私有数据
 
-`pthread_key_create` 创建一个键
+`pthread_key_create` 创建一个键。如果`destructor`不为空，那么当每个线程结束时，系统将调用这个函数来释放绑定在这个键上的内存块。`key`一旦被创建，所有线程都可以访问它，但各线程可根据自己的需要往`key`中填入不同的值，这就相当于提供了一个同名而不同值的全局变量，一键多值。
 
-`pthread_setspecific` 为一个键设置线程私有数据
+`pthread_setspecific` 为一个键设置线程私有数据。
 
-`pthread_getspecific` 从一个键读取线程私有数据
+`pthread_getspecific` 从一个键读取线程私有数据。
 
-`pthread_key_delete` 删除一个键
+`pthread_key_delete` 删除一个键。
 
 ```c
 int pthread_key_create(pthread_key_t *key, void (*destructor)(void*));
