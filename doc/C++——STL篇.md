@@ -341,6 +341,42 @@ template <class Item>
 
 萃取编程技术大量地应用在了C++工程开发当中，它利用了“内嵌型别”的编程技巧，弥补了C++语言本身的缺陷。
 
+### const与iterator
+
+试比较下列语句的区别
+
+```C++
+vector<int>::iterator       it0 = vec.begin();		// 0
+vector<int>::iterator const it1 = vec.begin();		// 1
+const vector<int>::iterator it2 = vec.begin();		// 2
+vector<int>::const_iterator it3 = vec.begin();		// 3
+```
+
+注意到，`const`出现在了不同的地方，含义会发生变化。第0句话是我们常用的迭代器类型，`it0`既支持改变数组值，也可以改变迭代器的位置。
+
+```C++
+it0++;			// OK
+*it0 = 5;		// OK
+```
+
+`it1`和`it2`都支持改变数组值，但不能更改迭代器的位置，因为类型被`const`修饰，类似于`int * const`。
+
+```C++
+*it1 = 5;		// OK
+*it2 = 3;
+it1++;			// Error
+it2 = vec.end();// Error
+```
+
+最后`it3`指的是无法改变数组的值，但可以改变迭代器的位置，类似于`const int *`
+
+```c++
+*it3 = 1;		// Error
+++it3;			// OK
+```
+
+更多示例情况，请看[程序](../src/STL/const.cpp)。
+
 ## 序列容器
 
 
