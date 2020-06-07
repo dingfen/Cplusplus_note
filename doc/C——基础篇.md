@@ -5,8 +5,8 @@
 ## 一、在C文件中引用C++函数
 
 1. 将要使用的函数声明放在一个头文件中
-2. 把要被c函数调用的c++函数的声明放在`extern "C"{ ... }`语句块里
-3. 注意：标准c++的头文件包含不能放在`extern "C"{ ... }`语句块里
+2. 把要被C语言调用的C++函数的声明放在`extern "C"{ ... }`语句块里
+3. 注意：标准C++的头文件包含不能放在`extern "C"{ ... }`语句块里
 
 特别的，若要在C++文件调用C文件的函数也是可行的。
 
@@ -196,3 +196,29 @@ C语言中有哪些类型是被重新命名的？它们的用处是什么？本�
 | nullptr_t<sup>C++11</sup>   | 关键字`nullptr`的类型 | 该类型表示它不是指向某个东西的指针类型，当多个重载函数接收不同的指针类型时，重载一个接收`std::nullptr_t`用于处理传入null指针的情况 |
 | max_align_t<sup>C++11</sup> | 实现定义              | 一种对齐要求，至少与每个标量类型一样严格（大）的类型         |
 | NULL                        | 宏 （void*) 0 or 0    | C语言中表示空指针，但在C++中仅表示0，C++中的空指针推荐使用`nullptr` |
+
+## 六、GNC C中的Attributes
+
+在GNC C中，可以将你要调用的函数用“特殊的东西”声明，可以帮助编译器优化你的函数，并可以帮你挑出一些更加细微的错误。
+
+那么这些**特殊的东西**，就是这里介绍的关键字`__attribute__`了。在声明时，它可以帮你给函数设定一个特殊的属性。这个关键字通常会带有如下几个东西：
+
+- noreturn
+
+  ```c
+  void err_sys(const char * fmt, ...) __attribute__((noreturn))
+  ```
+
+  通常用在一些标准库函数中，例如`abort`或者`exit`，意思是不能`return`，GCC会得知这一点，并且GCC就会对其进行优化：**不会考虑如果`err_sys`出现返回值的情况**。更重要的是，可以避免出现未初始化变量的警告。
+
+- noinline
+
+  阻止函数内联。
+
+事实上，GCC的attribute有三大类：
+
+* Function attributes described [here](http://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html)
+* Variable attributes described [here](http://gcc.gnu.org/onlinedocs/gcc/Variable-Attributes.html)
+* Type attributes described [here](http://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html)
+
+这里就不一一介绍了。
