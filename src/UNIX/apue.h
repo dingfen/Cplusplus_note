@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
@@ -18,9 +19,11 @@
  */ 
 #define FILE_MODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
+char *path_alloc(size_t *);
 
 void err_sys(const char *, ...) __attribute__((noreturn));
 void err_msg(const char *, ...);
 void err_ret(const char *, ...);
+void err_quit(const char *, ...) __attribute__((noreturn));
 
 #endif // _APUE_H
