@@ -2,6 +2,8 @@
 
 [TOC]
 
+![](./mem.png)
+
 ## 一、在C文件中引用C++函数
 
 1. 将要使用的函数声明放在一个头文件中
@@ -222,3 +224,208 @@ C语言中有哪些类型是被重新命名的？它们的用处是什么？本�
 * Type attributes described [here](http://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html)
 
 这里就不一一介绍了。
+
+## 七、Linux下的命令行处理
+
+执行程序时，可以从命令行传值给 C 程序。这些值被称为**命令行参数**，它们对程序很重要，尤其是从外部控制程序的执行。命令行参数是使用 `main()` 函数参数来处理的，其中，**argc** 是指传入参数的个数，**argv[]** 是一个指针数组，指向传递给程序的每个参数。下面是一个简单的实例，检查命令行是否有提供参数，并根据参数执行相应的动作：
+
+```C
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+   if (argc == 2)
+      printf("The argument supplied is %s\n", argv[1]);
+   else if (argc > 2)
+      printf("Too many arguments supplied.\n");
+   else
+      printf("One argument expected.\n");
+}
+```
+
+使用一个参数，编译并执行上面的代码，它会产生下列结果：
+
+```bash
+$./a.out testing
+The argument supplied is testing
+```
+
+为了方便处理，Linux 提供了一系列函数帮助用户更好更快地解析命令行传来的参数。
+
+`getopt()`函数：`optstring`是一个简单字符列表，每个字母代表一个选项。
+
+```c
+#include <unistd.h>
+
+int getopt(int argc, char *const argv[], const char *optstring);
+
+extern char *optarg;
+extern int optind, opterr, optopt;
+```
+
+这个函数的返回值很有意思：
+
+- 如果处理的 option 成功，那么返回选项的字母，如果有值跟随，那么字符串会被放在`optarg`中。
+- 如果处理的 option 需要一个值，但命令行中没有给定值，返回 ：
+- 如果处理了一个未知的 option ，返回 ？，并将值存入到`optopt`
+- 如果没有更多的 option 等待处理，返回-1
+- 如果多余出一些跟随值，那么会将多余的存放在`argv`数组中，`optind`和`argc`分别充当索引和大小。
+
+那么`optstring`要怎么写呢？
+
+```C
+char *optstring = "ab:c::";
+// 单个字符a       表示选项a 没有参数   -a即可
+// 单个字符加冒号b: 表示选项b 必须有参数 -b 10
+// 单个字符加两个冒号c:: 表示选项c可有可无参数
+```
+
+具体示例[程序](../src/basic/cmd/getopt.c)。
+
+`getopt_long()`函数与`getopt_long_only()`函数，它们的工作方式与`getopt()`函数很像，除了这些函数还可以接收（`getopt_long_only()`除外）长选项`--`，形式可以为`--arg=param`或者`--arg param`。
+
+```c
+int getopt_long(int argc, char *const *argv, const char* shortopts, 
+                const struct option *longopts, int longind);
+// 其中结构体option
+struct option {
+    const char *name;		// name of ong option
+    int         has_arg;	// 0 no 1 required 2 optional
+    int        *flag;		// how results returned
+    int 		val;        // value to return
+}
+```
+
+具体示例见[程序](../src/basic/cmd/getopt_long.c)
+
+## 八、Linux下的时间处理
+
+Linux内核提供的基本时间服务是计算自协调世界时（UTC）公元1970年1月1日 00:00:00 这一特定时间以来经过的秒数。这种秒数用` time_t `数据结构表示。
+
+`time()`函数返回当前的秒数。
+
+```C
+#include <time.h>
+
+time_t time(time_t *calptr);
+```
+
+时间值作为函数值返回。若参数非空，时间值也会放在`calptr`指向的值中。
+
+`clock_gettime()`函数可以用于获取指定时钟的时间，返回的时间在`timespec`数据结构中，它将时间分为秒和纳秒。`clock_id`用于指示选项，常用的有`CLOCK_REALTIME`、`CLOCK_MONOTONIC`、`CLOCK_PROCESS_CPUTIME_ID`。
+
+```C
+#include <sys/time.h>
+
+int clock_gettime(clockid_t clock_id, struct timespec *tsp);
+int clock_getres(clockid_t clock_id, struct timespec *tsp);
+int clock_settime(clockid_t clock_id, struct timespec *tsp);
+```
+
+`clock_getres`函数把`tsp`指向的`timespec`结构初始化为`clock_id`参数对于的**时钟精度**。我们还可以使用`clock_settime`函数设置时间，但有些时钟不能修改。
+
+以上这些函数得到的数字都是自UTC时间的秒数，这对人类非常不友好。需要用`localtime`、`gmtime`、`strftime`等函数将秒数转为可读时间。`localtime`和`gmtime`将时间转换存入到结构体`tm`中。而`mktime`函数将tm时间转换为秒数。
+
+```C
+#include <time.h>
+struct tm {
+    int tm_sec;		// [0-60] 允许润秒
+    int tm_min;		// [0-59]
+    int tm_hour;	// [0-23] 
+    int tm_mday;	// [1-31]
+    int tm_mon;		// [0-11]
+    int tm_year;	// years since 1900
+    int tm_wday;	// [0-6]
+    int tm_yday;	// [0-365]
+    int tm_isdst;	// daylight saving time flag
+}
+
+struct tm *gmtime(const time_t *calptr);
+struct tm *localtime(const time_t *calptr);
+
+time_t mktime(struct tm *tmptr);
+```
+
+当然，`gmtime`和`localtime`函数仍然不能满足人们的需要。函数`strftime`是类似于`printf`的时间值函数，可以通过多个参数定制产生的字符串。
+
+```C
+#include <time.h>
+
+size_t strftime(char *buf, size_t maxsize, const char *format, 
+                const struct tm *tmptr);
+size_t strftime_l(char *buf, size_t maxsize, const char *format, 
+                  const struct tm *tmptr, locale_t locale);
+char *strptime(const char *buf, const char *format, struct tm *tmptr);
+```
+
+`tmptr`是要格式化的时间值，格式化的结果存放在长度为`maxsize`的`buf`数组中，如果长度不足，函数返回0，否则返回在 `buf` 中存放的字符数。`format`是控制时间值的格式，与`printf`相同。
+
+这是使用说明：
+
+![](strftime.png)
+
+`strptime`是`strftime`的反过来的版本，把字符串时间转换为分解时间。
+
+这些函数的转换关系，可以用这一张图概括：
+
+![](./time.png)
+
+## 九、setjmp 和 longjmp
+
+C语言中，goto语句是不能跨函数的，执行跨函数跳转功能的是函数 `setjmp` 和 `longjmp` 。这两个函数在处理**发生在很深的嵌套函数调用中的出错情况**是非常有用的。
+
+先来看一下下面的程序示例，引出问题：
+
+```c
+int main() {
+    /* ... */
+    while(fgets(line, MAXLINE, stdin) != NULL)
+        do_line(line);
+    /* ... */
+}
+
+void do_line(char *ptr) {
+    /* ... */
+    while((cmd = get_token()) > 0)
+        cmd_add();
+}
+
+void cmd_add() {
+    /* ... */
+}
+
+int get_token() {
+    /* ... */
+}
+```
+
+可以发现，该程序有非常多的函数调用，嵌套多层，设想若在 `cmd_add` 函数发现一个错误，需要返回 `main` 函数并读下一个输入行，我们就不得不检查函数返回值逐层返回，那就会变得非常麻烦。
+
+使用 `setjmp` 和 `longjmp`函数，可以使程序在栈上跳过若干调用帧，返回到当前函数调用路径上的某一个函数。
+
+```C
+#include <setjmp.h>
+
+int setjmp(jmp_buf env);
+void longjmp(jmp_buf env, int val);
+```
+
+在希望返回到的位置调用 `setjmp`，`setjmp` 的参数 `env` 的类型是 `jmp_buf` 。这一数据类型是某种形式的数组，用于存放在调用 `longjmp` 函数时，用来恢复栈状态的所有信息。通常 `env` 为全局变量，因为需要在另一个函数中使用。
+
+```c
+jmp_buf jmpbuffer;
+int main() {
+    /* ... */
+    if (setjmp(jmpbuffer) != 0)
+        printf("error\n");
+    while(fgets(line, MAXLINE, stdin) != NULL)
+        do_line(line);
+    /* ... */
+}
+
+void cmd_add() {
+    if ((token = get_token()) < 0)	// error occurred
+        longjmp(jmpbuffer, 1);
+}
+```
+
+当一个错误发生，`longjmp` 函数就会被调用，其中第二个函数参数 `val`将成为从 `setjmp` 处返回的值。显然，对于一个 `setjmp` 可以有多个 `longjmp`。返回的值是用户自己设计的，
